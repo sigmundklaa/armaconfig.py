@@ -201,6 +201,9 @@ class Config(abc.MutableMapping, dict):
 
             raise
 
+    def iter_self(self):
+        return iter(self._dict)
+
     def items_raw(self):
         for key in self.iter_self():
             yield key, self._get_raw(key)
@@ -222,9 +225,6 @@ class Config(abc.MutableMapping, dict):
 
     def _keytransform(self, key):
         return key.lower()
-
-    def iter_self(self):
-        return iter(self._dict)
 
     def __iter__(self):
         if self.inherits:

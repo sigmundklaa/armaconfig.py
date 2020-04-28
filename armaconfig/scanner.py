@@ -239,14 +239,19 @@ class Scanner:
     def scan(self, simple=False):
         char = self._get_raw()
 
-        if char == '/' and ((peek := self._peek()) in ['/', '*']):
+        try:
+            peek = self._peek()
+        except EOL:
+            peek = None
+
+        if char == '/' and (peek in ['/', '*']):
             if peek == '/':
                 self._find_delim('\n', advance=True)
             else:
                 self._find_delim('*/', advance=True)
 
             return self.scan()
-        elif char == '#' and self._peek() == '#':
+        elif char == '#' and peek == '#':
             self._advance(1)
 
             return self._make_token(TokenType.DOUBLE_HASH, '')
