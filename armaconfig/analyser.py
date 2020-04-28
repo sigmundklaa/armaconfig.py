@@ -4,7 +4,7 @@
 import os, enum, collections
 from pathlib import Path
 
-from .scanner import Scanner, Token, TokenType, TokenCollection
+from .scanner import Scanner, Token, TokenType, TokenCollection, EOL
 from .exceptions import UnexpectedType, UnexpectedValue
 from .stream import TokenStream, PreprocessedStream, only
 
@@ -105,5 +105,5 @@ class Parser:
         while True:
             try:
                 yield self._parse_one()
-            except RuntimeError:
+            except EOL:
                 return

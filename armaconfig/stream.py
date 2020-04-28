@@ -3,7 +3,7 @@ import os, functools
 from pathlib import Path
 from typing import Union
 
-from .scanner import Scanner, TokenType, Token, TokenCollection, EOL
+from .scanner import Scanner, TokenType, Token, TokenCollection, EOL, joined_token
 from .exceptions import Unexpected, UnexpectedType, UnexpectedValue
 
 def only(arr):
@@ -88,7 +88,7 @@ class DefineStatement:
                     else:
                         break
 
-                yield collection
+                yield joined_token(collection, type_=TokenType.IDENTIFIER)
             elif type_ == TokenType.UNKNOWN and value == '#':
                 collection = TokenCollection(self.__call__(*args), type=TokenType.STRING)
 
@@ -215,6 +215,11 @@ class TokenStream:
 
     def _next_token(self, include_ws=False):
         token = (self._buf and self._buf.pop(0)) or next(self._iterator)
+
+        if isinstance(token, TokenCollection):
+            self._buf.extend(token)
+
+            return self._next_token(include_ws)
 
         if not include_ws and token.type == TokenType.UNKNOWN and token.value.isspace():
             return self._next_token(include_ws)

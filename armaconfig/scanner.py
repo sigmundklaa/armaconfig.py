@@ -37,6 +37,14 @@ class Token(_Token):
 
         return cls(*args, **td)
 
+def joined_token(tokens, type_=None):
+    assert tokens
+    
+    value = ''.join([x.value for x in tokens])
+    type_ = type_ or tokens[0].type
+
+    return Token.from_token(tokens[0], value=value, type=type_)
+
 class TokenCollection(list):
     # TODO: Multiple units
 
