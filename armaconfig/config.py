@@ -232,6 +232,9 @@ class Config(abc.MutableMapping, dict):
         
         yield from self.iter_self()
 
+    def __repr__(self):
+        return self._dict.__repr__()
+
     def __getitem__(self, item):
         raw = self._get_raw(item)
 
