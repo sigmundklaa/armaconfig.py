@@ -1,0 +1,7 @@
+[run]
+branch = True
+source =
+    armaconfig
+
+[report]
+show_missing = True
