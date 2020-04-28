@@ -1,5 +1,4 @@
 
-import re
 from collections import OrderedDict, namedtuple, _OrderedDictItemsView, abc
 from .analyser import Parser, NodeType
 
@@ -72,7 +71,7 @@ class Encoder:
                 yield from self._make_indent('\n')
             yield '}'
         elif isinstance(node, str):
-            yield '"%s"' % re.sub(r'\"', '""', node)
+            yield '"%s"' % node.replace('"', '""')
         elif isinstance(node, bool):
             yield str(int(node))
         else:

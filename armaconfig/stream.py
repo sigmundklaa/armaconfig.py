@@ -1,5 +1,5 @@
 
-import os, re, functools
+import os, functools
 from pathlib import Path
 from typing import Union
 
@@ -307,7 +307,7 @@ class PreprocessedStream(TokenStream):
                 elif t != TokenType.ARROW_STRING:
                     raise UnexpectedType([TokenType.STRING, TokenType.ARROW_STRING], path_token)
 
-                path = re.sub(r'\\', '/', path)
+                path = path.replace('\\', '/')
 
                 self.tokens.add_scanner(self.path.parent.joinpath(path).resolve())
 
