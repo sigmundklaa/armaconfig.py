@@ -1,6 +1,9 @@
 
 import os, enum, collections
 
+# Default name for streams with no name (e.g. StringIO)
+DEFAULT_STREAM_NAME = 'unitless'
+
 class EOL(IndexError): pass
 
 class TokenType(enum.Enum):
@@ -64,7 +67,7 @@ class Scanner:
             self._stream = open(self._unit)
         else:
             self._stream = unit
-            self._unit = self._stream.name
+            self._unit = getattr(self._stream, 'name', DEFAULT_STREAM_NAME)
 
         self._lineno = 0
         self._cursor = 0

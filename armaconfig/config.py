@@ -1,6 +1,7 @@
 
 from collections import OrderedDict, namedtuple, _OrderedDictItemsView, abc
 from .analyser import Parser, NodeType
+from .scanner import DEFAULT_STREAM_NAME
 
 ValueNode = namedtuple('ValueNode', ['name', 'value'])
 
@@ -92,7 +93,7 @@ def encode(node, *args, **kwargs):
 
 def decode(unit):
     parser = Parser(unit)
-    base_config = Config(unit.name)
+    base_config = Config(getattr(unit, 'name', DEFAULT_STREAM_NAME))
 
     configs = [base_config]
 

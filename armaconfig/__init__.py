@@ -24,6 +24,4 @@ def load(fp, *args, **kwargs):
     return decode(fp, *args, **kwargs)
 
 def loads(string, *args, **kwargs):
-    buf = io.StringIO(string)
-    buf.name = 'Fuckyoucunt'
-    return load(buf, *args, **kwargs)
+    return load(io.StringIO(string), *args, **kwargs)
