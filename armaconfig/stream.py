@@ -50,24 +50,26 @@ class DefineStatement:
     def __init__(self, preprocessor, name, args, tokens):
         self.name = name
         self.args = args
-        self.tokens = TokenStream(tokens, iter_include_ws=True)
+        self.tokens = tokens
         self.preprocessor = preprocessor
 
     def __call__(self, *args):
+        stream = TokenStream(self.tokens, iter_include_ws=True)
+
         def resolve_identifier(identifier):
             names = self.args
 
             if identifier.value in names:
                 yield args[names.index(identifier.value)]
             else:
-                yield from process_identifier(self.preprocessor, self.tokens, identifier)
+                yield from process_identifier(self.preprocessor, stream, identifier)
 
         expect, got = len(self.args), len(args)
 
         if expect != got:
             raise TypeError(f'Expected {expect} positional arguments, got {got}')
         
-        for index, token in enumerate(self.tokens):
+        for token in stream:
             type_, value = token
 
             if type_ == TokenType.IDENTIFIER:
@@ -75,14 +77,14 @@ class DefineStatement:
 
                 while True:
                     try:
-                        t, v = only(self.tokens.peek(1, include_ws=True))
+                        t, v = only(stream.peek(1, include_ws=True))
                     except StopIteration:
                         break
 
                     if t == TokenType.DOUBLE_HASH:
-                        self.tokens.discard(1)
+                        stream.discard(1)
 
-                        identifier = resolve_identifier(only(self.tokens.get(1, include_ws=True, expect_type=[TokenType.IDENTIFIER])))
+                        identifier = resolve_identifier(only(stream.get(1, include_ws=True, expect_type=[TokenType.IDENTIFIER])))
 
                         collection.extend(identifier)
                     else:
