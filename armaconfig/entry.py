@@ -98,6 +98,10 @@ class Charbuf(abc.ABC):
 
         return seq
 
+    def iter_chars(self):
+        while True:
+            yield self.get(1)
+
     def find_delim(self, delim, advance=False):
         seq = ''
         length = len(delim)
@@ -162,6 +166,7 @@ class StreamSet(Charbuf):
 
     def __init__(self, stream=None):
         self.streams = []
+        self.line_empty = True
 
         if stream is not None:
             if isinstance(stream, list):
@@ -175,6 +180,9 @@ class StreamSet(Charbuf):
         return self.streams[-1]
 
     def add_stream(self, stream):
+        if isinstance(stream, (str, os.PathLike)):
+            stream = open(stream)
+
         self.streams.append({
             'iowrapper': stream,
             'line': 0,
@@ -229,10 +237,6 @@ class Scanner(Charbuf):
     def _fill_buf(self, length):
         while len(self.buf) <= length:
             self.buf.extend([x for x in self.preprocessor.process()])
-
-    def iter_chars(self):
-        while True:
-            yield self.get(1)
 
     def __iter__(self):
         return self
