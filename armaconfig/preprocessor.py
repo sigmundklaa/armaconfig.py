@@ -68,7 +68,7 @@ class Preprocessor:
     def __init__(self, scanner, **opts):
         self.opts = opts
         self.scanner = scanner
-        self.stream = self.scanner.streamset
+        self.stream = self.scanner.stream
         self.defined = {}
         self.data = []
 
@@ -108,7 +108,7 @@ class Preprocessor:
                     elif seperator == ')': break
                     else: raise Unexpected([',', ')'], seperator)
 
-            it = self.stream.iter_chars()
+            it = iter(self.stream)
             chars = ''
 
             for char in it:
@@ -154,10 +154,10 @@ class Preprocessor:
             raise UnexpectedValue(['define', 'include', 'ifdef', 'ifndef', 'undef'], token)
 
     def _next(self, expect=None):
-        def default():
+        def default(payload):
             self._comp_expect(expect, None)
 
-            return self.scanner.make_token(self.Types.UNSPECIFIED, char)
+            return self.scanner.make_token(self.Types.UNSPECIFIED, payload)
 
         char = self.stream.get(1)
 
@@ -184,14 +184,12 @@ class Preprocessor:
             # get the identifier, check if it is a macro.
             # if it is a macro, return a token for it,
             # if not, return the default
-            identifier = char + self.stream.peek_cb(is_identifier_char)
+            identifier = char + self.stream.find_with_cb(is_identifier_char, advance=False)
 
             if identifier in self.defined or expect == self.Types.IDENTIFIER:
-                self.stream.advance(len(identifier))
-
                 return self.scanner.make_token(self.Types.IDENTIFIER, identifier)
 
-            return default()
+            return default(identifier)
         elif char in ('"', '<'):
             self._comp_expect(expect, self.Types.INCL_STRING)
 
@@ -201,8 +199,10 @@ class Preprocessor:
                 value = self.stream.get_string()
 
             return self.scanner.make_token(self.Types.INCL_STRING, value)
+        elif char.isspace() and expect is not None:
+            return self._next(expect)
         else:
-            return default()
+            return default(char)
 
     def process(self):
         t, v = nxt = self._next()
@@ -232,4 +232,4 @@ class Preprocessor:
 
             raise UnexpectedType([self.Types.COMMAND, self.Types.COMMENT, self.Types.UNSPECIFIED], nxt)
         else:
-            return self.process()
+            return ''

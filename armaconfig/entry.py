@@ -3,6 +3,7 @@ import os, abc, enum, collections
 from .preprocessor import Preprocessor
 from .exceptions import EOL
 from .utils import is_identifier_char
+from .buf import Charbuf, Buf
 
 # Default name for streams with no `.name` (e.g. StringIO)
 DEFAULT_STREAM_NAME = 'anonymous'
@@ -68,101 +69,8 @@ class TokenCollection(list):
         return ''.join([str(x.value) for x in self])
 
 
-
-class Charbuf(abc.ABC):
-    """
-    Helper class that provides methods for reading chars from a buffer.
-    """
-
-    @property
-    @abc.abstractmethod
-    def buf(self): pass
-
-    @abc.abstractmethod
-    def _fill_buf(self, length=1): pass
-
-    def peek(self, length=1):
-        self._fill_buf(length)
-
-        slice_ = self.buf[:length]
-
-        return ''.join(slice_)
-
-    def advance(self, length=1):
-        del self.buf[:length]
-
-    def get(self, length=1):
-        seq = self.peek(length)
-
-        self.advance(length)
-
-        return seq
-
-    def iter_chars(self):
-        while True:
-            yield self.get(1)
-
-    def find_delim(self, delim, advance=False):
-        seq = ''
-        length = len(delim)
-
-        while self.peek(length) != delim:
-            seq += self.get(1)
-
-        if advance:
-            self.advance(length)
-
-        return seq
-
-    def find_with_cb(self, callback, length=1, advance=False):
-        # TODO: Ensure this does not raise EOL
-        seq = ''
-        getter = self.get if advance else self.peek
-        is_peek = not advance
-
-        check = getter(length)
-
-        while callback(check):
-            seq += check
-            
-            if is_peek:
-                self.advance(1)
-
-            check = getter(length)
-
-        return seq
-
-    def peek_cb(self, callback, length=1):
-        seq = ''
-        offset = 0
-        check = self.peek(length)
-
-        while callback(check):
-            offset += 1
-            seq += check
-            check = self.peek(offset + length)[offset:]
-
-        return seq
-
-    def get_string(self):
-        """
-        This method assumes that the first " has been found
-        """
-        def callback(char):
-            if char == '"':
-                if self.peek(1) != '"':
-                    return False
-
-                self.advance(1)
-
-            return True
-
-        return self.find_with_cb(callback, length=1, advance=True)
-
-
-class StreamSet(Charbuf):
-    STREAM_TUPLE = collections.namedtuple('STREAM_TUPLE', ['iowrapper', 'line', 'col', 'name'])
-    buf = []
+class Streambuf(Charbuf):
+    CHAR_TUPLE = collections.namedtuple('CHAR_TUPLE', ['char', 'line', 'col', 'unit'])
 
     def __init__(self, stream=None):
         self.streams = []
@@ -174,6 +82,8 @@ class StreamSet(Charbuf):
                     self.add_stream(i)
             else:
                 self.add_stream(stream)
+
+        super().__init__()
 
     @property
     def current(self):
@@ -194,6 +104,7 @@ class StreamSet(Charbuf):
         stream = self.current
 
         char = stream['iowrapper'].read(1)
+        char_tuple = self.CHAR_TUPLE(char, stream['line'], stream['col'], stream['name'])
 
         if not char:
             self._eol_reached()
@@ -206,9 +117,9 @@ class StreamSet(Charbuf):
         return char
 
     def _fill_buf(self, length):
-        chars = [self.__read() for _ in range(length - len(self.buf))]
+        chars = [self.__read() for _ in range(length - len(self._buf))]
 
-        self.buf.extend(chars)
+        self._buf.extend(chars)
 
         return ''.join(chars)
 
@@ -224,19 +135,23 @@ class Scanner(Charbuf):
         SYMBOL = 2
         UNSPECIFIED = 3
 
-    buf = []
-
     def __init__(self, stream=None, preprocess=True, pp_args={}):
-        self.streamset = StreamSet(stream)
+        self.stream = Streambuf(stream)
 
         if preprocess:
             self.preprocessor = Preprocessor(self, **pp_args)
         else:
             self.preprocessor = None
 
+        super().__init__()
+
     def _fill_buf(self, length):
-        while len(self.buf) <= length:
-            self.buf.extend([x for x in self.preprocessor.process()])
+        while len(self._buf) < length:
+            self._buf.extend([x for x in self.preprocessor.process()])
+
+    def _iter_chars(self):
+        while True:
+            yield self.get(1)
 
     def __iter__(self):
         return self
@@ -245,7 +160,7 @@ class Scanner(Charbuf):
         return self.scan()
 
     def make_token(self, *args, **kwargs):
-        stream = self.streamset.current
+        stream = self.stream.current
 
         kwargs.setdefault('lineno', stream['line'] + 1)
         kwargs.setdefault('colno', stream['col'] + 1)
@@ -254,7 +169,7 @@ class Scanner(Charbuf):
         return Token(*args, **kwargs)
 
     def scan(self):
-        for char in self.iter_chars():
+        for char in self._iter_chars():
             if is_identifier_char(char):
                 yield self.make_token(self.Types.IDENTIFIER, char + self.find_with_cb(is_identifier_char))
             elif char in ('=', ';', '{', '}' '[', ']' ':'):
