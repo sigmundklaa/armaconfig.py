@@ -44,6 +44,9 @@ class Buf(abc.ABC):
     def get(self, length=1):
         seq = self.peek(length)
 
+        if length and not seq:
+            raise EOL()
+
         self.advance(length)
 
         return seq
@@ -114,4 +117,4 @@ class Strbuf(Charbuf):
             try:
                 self._buf.append(next(self.iterator))
             except StopIteration:
-                raise EOL()
+                return
