@@ -1,5 +1,6 @@
 
 import abc
+from .exceptions import EOL
 
 def get_string(buf):
     """
@@ -51,7 +52,10 @@ class Buf(abc.ABC):
         return self
 
     def __next__(self):
-        return self.get(1)
+        try:
+            return self.get(1)
+        except EOL:
+            raise StopIteration
 
 class Charbuf(Buf):
     def peek(self, *args, **kwargs):
@@ -107,4 +111,7 @@ class Strbuf(Charbuf):
 
     def _fill_buf(self, length=1):
         for _ in range(length):
-            self._buf.append(next(self.iterator))
+            try:
+                self._buf.append(next(self.iterator))
+            except StopIteration:
+                raise EOL()

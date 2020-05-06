@@ -8,9 +8,9 @@ class A {
 };
 #endif
 
-#define a b
-#define b a##b
+#define a(x) b(x)
+#define b(n) a##b##n
 
 class B {
-	property = a;
+	property = a(1);
 };

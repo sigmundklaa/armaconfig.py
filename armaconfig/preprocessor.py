@@ -5,6 +5,7 @@ The preprocessor acts as an optional layer between the main stream, and the sour
 import enum
 from .exceptions import Unexpected, UnexpectedValue, UnexpectedType, EOL
 from .utils import is_identifier_char
+from .buf import Strbuf
 
 class Define:
     def __init__(self, preprocessor, name, args, chars):
@@ -14,37 +15,28 @@ class Define:
         self.preprocessor = preprocessor
 
     def __call__(self, *args):
-        iterator = iter(self.chars)
+        buf = Strbuf(iter(self.chars))
         expect, got = len(self.args), len(args)
-        buf = []
 
         if expect != got:
             raise Exception(f'{repr(self)}: Expected {expect} macro arguments, got {got}')
 
-        for char in iterator:
-            if char == '_' or char.isalpha():
-                identifier = char
+        for char in buf:
+            if is_identifier_char(char):
+                identifier = char + buf.find_with_cb(is_identifier_char)
                 is_joined = False
 
-                for id_char in iterator:
-                    if id_char == '#':
-                        nxt = next(iterator)
+                while buf.peek(2) == '##':
+                    buf.advance(2)
 
-                        # if two # follow eachother, that means continue the identifier
-                        if nxt != '#':
-                            buf.extend([id_char, nxt])
-                            break
-                        
-                        is_joined = True
-                    elif not is_identifier_char(id_char):
-                        buf.append(id_char)
-                        break
-                    else:
-                        identifier += id_char
+                    if buf.peek(1) == '#': break
+
+                    is_joined = True
+                    identifier += buf.find_with_cb(is_identifier_char)
 
                 if not is_joined and identifier in self.preprocessor.defined:
                     # Check for args tho k chief
-                    yield from self.preprocessor.defined[identifier]()
+                    yield from self.preprocessor.defined[identifier].resolve(buf)
 
                 else:
                     yield from iter(identifier)
@@ -53,6 +45,34 @@ class Define:
                 pass
             else:
                 yield char
+
+    def resolve(self, buf):
+        args = []
+        current = ''
+
+        if buf.peek(1) == '(':
+            buf.advance(1)
+
+            for char in buf:
+                if char in ',)':
+                    args.append(current)
+                    current = ''
+
+                    if char == ')':
+                        break
+                elif is_identifier_char(char):
+                    identifier = char + buf.find_with_cb(is_identifier_char)
+
+                    if identifier in self.preprocessor.defined:
+                        stmt = self.preprocessor.defined[identifier]
+
+                        current += ''.join(list(stmt.resolve(buf)))
+                    else:
+                        current += identifier
+                else:
+                    current += char
+
+        return self.__call__(*args)
 
     def __repr__(self):
         return f'{type(self).__name__}: {self.name}({",".join(self.args)})'
@@ -226,7 +246,7 @@ class Preprocessor:
                 return v
             elif t == self.Types.IDENTIFIER:
                 if v in self.defined:
-                    return ''.join(list(self.defined[v]()))
+                    return ''.join([x for x in self.defined[v].resolve(self.stream)])
                 else:
                     return v
 
