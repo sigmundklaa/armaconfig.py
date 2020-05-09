@@ -62,7 +62,10 @@ class Buf(abc.ABC):
 
 class Charbuf(Buf):
     def peek(self, *args, **kwargs):
-        return ''.join(super().peek(*args, **kwargs))
+        peek = super().peek(*args, **kwargs)
+        print(peek)
+
+        return ''.join(peek)
 
     def find_delim(self, delim, advance=False):
         seq = ''

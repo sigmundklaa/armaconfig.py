@@ -1,23 +1,12 @@
 
 import os, abc, enum, collections
 from .preprocessor import Preprocessor
-from .exceptions import EOL
+from .exceptions import EOL, Unexpected, UnexpectedType, UnexpectedValue
 from .utils import is_identifier_char
 from .buf import Charbuf, Buf
 
 # Default name for streams with no `.name` (e.g. StringIO)
 DEFAULT_STREAM_NAME = 'anonymous'
-
-class TokenFlag(enum.Flag):
-    UNSPECIFIED = 0x00
-    PREPRO_ONLY = 0x01 # Tokens that are meant for preprocessor only
-    CONFIG_ONLY = 0x02 # Tokens that are meant for config only (e.g. cant be used as macro)
-    PREPRO_CMD = 0x04
-    IDENTIFIER = 0x08
-    IDENTIFIER_JOINED = 0x10
-    STRING = 0x20
-    EOF = 0x40
-    COMMENT = 0x80
 
 _Token = collections.namedtuple('Token', [
     'type',
@@ -36,38 +25,10 @@ class Token(_Token):
 
     @classmethod
     def from_token(cls, token, *args, **kwargs):
-        def _get_first(tk):
-            if isinstance(tk, TokenCollection):
-                return _get_first(tk[0])
-            
-            return tk
-
-        td = _get_first(token)._asdict()
+        td = token._asdict()
         td.update(**kwargs)
 
         return cls(*args, **td)
-
-class TokenCollection(list):
-    # TODO: Multiple units
-
-    def __init__(self, *args, **kwargs):
-        self.type = kwargs.pop('type', TokenFlag.UNSPECIFIED)
-
-        super().__init__(*args, **kwargs)
-
-    def __getattr__(self, attr):
-        if attr in ('colno', 'lineno', 'unit'):
-            try:
-                return getattr(self[0], attr)
-            except IndexError:
-                pass
-
-        raise NotImplementedError(attr)
-
-    @property
-    def value(self):
-        return ''.join([str(x.value) for x in self])
-
 
 class Streambuf(Charbuf):
     CHAR_TUPLE = collections.namedtuple('CHAR_TUPLE', ['char', 'line', 'col', 'unit'])
@@ -100,6 +61,15 @@ class Streambuf(Charbuf):
             'name': getattr(stream, 'name', DEFAULT_STREAM_NAME)
         })
 
+    def make_token(self, *args, **kwargs):
+        stream = self.current
+
+        kwargs.setdefault('lineno', stream['line'] + 1)
+        kwargs.setdefault('colno', stream['col'] + 1)
+        kwargs.setdefault('unit', stream['name'])
+
+        return Token(*args, **kwargs)
+
     def __read(self):
         stream = self.current
 
@@ -129,19 +99,10 @@ class Streambuf(Charbuf):
 
         self.streams.pop()
 
-class Scanner(Charbuf):
-    class Types(enum.Enum):
-        IDENTIFIER = 1
-        SYMBOL = 2
-        UNSPECIFIED = 3
-
-    def __init__(self, stream=None, preprocess=True, pp_args={}):
+class InterScanner(Charbuf):
+    def __init__(self, stream, **kwargs):
         self.stream = Streambuf(stream)
-
-        if preprocess:
-            self.preprocessor = Preprocessor(self, **pp_args)
-        else:
-            self.preprocessor = None
+        self.preprocessor = Preprocessor(self, **kwargs)
 
         super().__init__()
 
@@ -149,30 +110,77 @@ class Scanner(Charbuf):
         while len(self._buf) < length:
             self._buf.extend([x for x in self.preprocessor.process()])
 
-    def _iter_chars(self):
-        while True:
-            yield self.get(1)
+    def __getattr__(self, *args, **kwargs):
+        return getattr(self.stream, *args, *kwargs)
+
+class Scanner(Buf):
+    class Types(enum.Enum):
+        IDENTIFIER = 1
+        SYMBOL = 2
+        UNSPECIFIED = 3
+
+    def __init__(self, stream=None, preprocess=True, **kwargs):
+        if preprocess:
+            self.stream = InterScanner(stream, **kwargs)
+        else:
+            self.stream = Streambuf(stream)
+
+        super().__init__()
+
+    def _fill_buf(self, length):
+        for _ in range(length - len(self._buf)):
+            self._buf.append(next(self))
 
     def __iter__(self):
         return self
 
     def __next__(self):
-        return self.scan()
+        return self.next_token()
 
-    def make_token(self, *args, **kwargs):
-        stream = self.stream.current
+    def sequence(self, length, expect_typ=None, expect_val=None, **kwargs):
+        def _get_expect(expect, idx):
+            try:
+                return expect[idx]
+            except (IndexError, TypeError):
+                return None
 
-        kwargs.setdefault('lineno', stream['line'] + 1)
-        kwargs.setdefault('colno', stream['col'] + 1)
-        kwargs.setdefault('unit', stream['name'])
+        return [
+            self.next_token(
+                expect_typ=_get_expect(expect_typ, idx),
+                expect_val=_get_expect(expect_val, idx)
+            )
+            for idx in range(length)    
+        ]
 
-        return Token(*args, **kwargs)
+    def next_token(self, include_ws=False, expect_typ=None, expect_val=None):
+        try:
+            token = next(self.scan())
+        except StopIteration:
+            raise EOL()
+
+        def _compare_expect(err, expect, got):
+            if expect is not None:
+                if isinstance(expect, (list, tuple)):
+                    valid = got in expect
+                else:
+                    valid = got == expect
+
+                if not valid:
+                    raise err(expect, token)
+
+        if not include_ws and token.type == self.Types.UNSPECIFIED and token.value.isspace():
+            return self.next_token(include_ws, expect_typ, expect_val)
+
+        _compare_expect(UnexpectedType, expect_typ, token.type)
+        _compare_expect(UnexpectedValue, expect_val, token.value)
+
+        return token
 
     def scan(self):
-        for char in self._iter_chars():
+        for char in self.stream:
             if is_identifier_char(char):
-                yield self.make_token(self.Types.IDENTIFIER, char + self.find_with_cb(is_identifier_char))
-            elif char in ('=', ';', '{', '}' '[', ']' ':'):
-                yield self.make_token(self.Types.SYMBOL, char)
+                yield self.stream.make_token(self.Types.IDENTIFIER, char + self.stream.find_with_cb(is_identifier_char))
+            elif char in ('=', ';', '{', '}', '[', ']' ':'):
+                yield self.stream.make_token(self.Types.SYMBOL, char)
             else:
-                yield self.make_token(self.Types.UNSPECIFIED, char)
+                yield self.stream.make_token(self.Types.UNSPECIFIED, char)

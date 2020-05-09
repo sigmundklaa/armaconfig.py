@@ -1,7 +1,7 @@
 
 from collections import OrderedDict, namedtuple, _OrderedDictItemsView, abc
 from .analyser import Parser, NodeType
-from .scanner import DEFAULT_STREAM_NAME
+from .entry import DEFAULT_STREAM_NAME
 
 ValueNode = namedtuple('ValueNode', ['name', 'value'])
 
@@ -147,8 +147,6 @@ class Config(abc.MutableMapping, dict):
     """
     A `Config` object acts as a proxy to an ordered dict.
     The dict contains the keys and values that the config consists of.
-
-    It's purpose is to 
 
     For example, consider the following Arma 3 Config class:
 

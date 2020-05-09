@@ -5,7 +5,7 @@ The preprocessor acts as an optional layer between the main stream, and the sour
 import enum
 from .exceptions import Unexpected, UnexpectedValue, UnexpectedType, EOL
 from .utils import is_identifier_char
-from .buf import Strbuf
+from .buf import Strbuf, get_string
 
 class Define:
     def __init__(self, preprocessor, name, args, chars):
@@ -210,13 +210,11 @@ class Preprocessor:
                 return self.scanner.make_token(self.Types.IDENTIFIER, identifier)
 
             return default(identifier)
-        elif char in ('"', '<'):
-            self._comp_expect(expect, self.Types.INCL_STRING)
-
+        elif char in ('"', '<') and expect == self.Types.INCL_STRING:
             if char == '<':
                 value = self.stream.find_with_cb(lambda x: x != '>', advance=True)
             else:
-                value = self.stream.get_string()
+                value = get_string(self.stream)
 
             return self.scanner.make_token(self.Types.INCL_STRING, value)
         elif char.isspace() and expect is not None:
