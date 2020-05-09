@@ -41,7 +41,7 @@ class Parser:
             else:
                 coll, s = self._get_until(seperators, token)
                 
-                seq.extend(x.value for x in coll)
+                seq.append(''.join([x.value for x in coll]))
 
             if s.value in ',;':
                 return seq + __parse()
