@@ -2,7 +2,7 @@
 import io
 
 from .config import *
-from .analyser import *
+from .analyse import *
 from .exceptions import *
 from .entry import *
 

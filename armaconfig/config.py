@@ -1,6 +1,6 @@
 
 from collections import OrderedDict, namedtuple, _OrderedDictItemsView, abc
-from .analyser import Parser, NodeType
+from .analyse import Parser, NodeType
 from .entry import DEFAULT_STREAM_NAME
 
 ValueNode = namedtuple('ValueNode', ['name', 'value'])

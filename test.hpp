@@ -5,6 +5,7 @@ class C {
 #else
 class A {
 	x = 3;
+	b = 5 to 3;
 };
 #endif
 
