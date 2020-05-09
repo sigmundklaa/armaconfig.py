@@ -3,7 +3,7 @@ import os, abc, enum, collections
 from .preprocessor import Preprocessor
 from .exceptions import EOL, Unexpected, UnexpectedType, UnexpectedValue
 from .utils import is_identifier_char
-from .buf import Charbuf, Buf
+from .buf import Charbuf, Buf, get_string
 
 # Default name for streams with no `.name` (e.g. StringIO)
 DEFAULT_STREAM_NAME = 'anonymous'
@@ -118,6 +118,7 @@ class Scanner(Buf):
         IDENTIFIER = 1
         SYMBOL = 2
         UNSPECIFIED = 3
+        STRING = 4
 
     def __init__(self, stream=None, preprocess=True, **kwargs):
         if preprocess:
@@ -180,7 +181,9 @@ class Scanner(Buf):
         for char in self.stream:
             if is_identifier_char(char):
                 yield self.stream.make_token(self.Types.IDENTIFIER, char + self.stream.find_with_cb(is_identifier_char))
-            elif char in ('=', ';', '{', '}', '[', ']' ':'):
+            elif char in '=;{{}}[]:':
                 yield self.stream.make_token(self.Types.SYMBOL, char)
+            elif char == '"':
+                yield self.stream.make_token(self.Types.STRING, get_string(self.stream))
             else:
                 yield self.stream.make_token(self.Types.UNSPECIFIED, char)

@@ -15,36 +15,47 @@ class Define:
         self.preprocessor = preprocessor
 
     def __call__(self, *args):
+        def resolve_arg(identifier):
+            if identifier not in self.args:
+                return identifier
+
+            return args[self.args.index(identifier)]
+
+        def _process_buf(buf):
+            for char in buf:
+                if is_identifier_char(char):
+                    identifier = resolve_arg(char + buf.find_with_cb(is_identifier_char))
+                    is_joined = False
+
+                    while buf.peek(2) == '##':
+                        buf.advance(2)
+
+                        if buf.peek(1) == '#': break
+
+                        is_joined = True
+                        identifier += resolve_arg(buf.find_with_cb(is_identifier_char))
+
+                    if not is_joined and identifier in self.preprocessor.defined:
+                        # Check for args tho k chief
+                        yield from self.preprocessor.defined[identifier].resolve(Strbuf(_process_buf(buf)))
+
+                    else:
+                        yield from iter(identifier)
+                elif char == '#':
+                    # just wrap everything in quotes
+                    yield '"'
+                    yield from _process_buf(buf)
+                    yield '"'
+                else:
+                    yield char
+
         buf = Strbuf(iter(self.chars))
         expect, got = len(self.args), len(args)
 
         if expect != got:
             raise Exception(f'{repr(self)}: Expected {expect} macro arguments, got {got}')
 
-        for char in buf:
-            if is_identifier_char(char):
-                identifier = char + buf.find_with_cb(is_identifier_char)
-                is_joined = False
-
-                while buf.peek(2) == '##':
-                    buf.advance(2)
-
-                    if buf.peek(1) == '#': break
-
-                    is_joined = True
-                    identifier += buf.find_with_cb(is_identifier_char)
-
-                if not is_joined and identifier in self.preprocessor.defined:
-                    # Check for args tho k chief
-                    yield from self.preprocessor.defined[identifier].resolve(buf)
-
-                else:
-                    yield from iter(identifier)
-            elif char == '#':
-                # maybe just wrap everything in quotes
-                pass
-            else:
-                yield char
+        return _process_buf(buf)
 
     def resolve(self, buf):
         args = []
@@ -103,12 +114,21 @@ class Preprocessor:
     def _process_command(self):
         _, command = token = self._next(self.Types.IDENTIFIER)
 
+        # if we're in an ifdef, we are searching for else or endif
         if self._in_ifdef and command in ('else', 'endif'):
-            if command == 'else':
-                self.should_return = not self.should_return
-            else:
+            if command == 'endif':
                 self.should_return = True
                 self._in_ifdef = False
+            else:
+                self.should_return = not self.should_return
+
+            return
+
+        # if we're in an ifdef, and we did not get else or endif,
+        # we return if self.should_return is set to false
+        elif not self.should_return:
+            return
+
         elif command == 'define':
             # add to .defined, return empty
             _, macro = self._next(self.Types.IDENTIFIER)
