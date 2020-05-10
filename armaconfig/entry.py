@@ -118,7 +118,7 @@ class Streambuf(Charbuf):
 
         self.streams.pop()
 
-class InterScanner(Charbuf):
+class PreproBuf(Charbuf):
     def __init__(self, stream, **kwargs):
         self.stream = Streambuf(stream)
         self.preprocessor = Preprocessor(self, **kwargs)
@@ -141,7 +141,7 @@ class Scanner(Buf):
 
     def __init__(self, stream=None, preprocess=True, **kwargs):
         if preprocess:
-            self.stream = InterScanner(stream, **kwargs)
+            self.stream = PreproBuf(stream, **kwargs)
         else:
             self.stream = Streambuf(stream)
 
