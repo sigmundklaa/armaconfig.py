@@ -84,7 +84,7 @@ class Streambuf(Charbuf):
         stream = self.current
 
         kwargs.setdefault('lineno', stream['line'] + 1)
-        kwargs.setdefault('colno', stream['col'] + 1)
+        kwargs.setdefault('colno', stream['col'])
         kwargs.setdefault('unit', stream['name'])
 
         return Token(*args, **kwargs)
@@ -93,7 +93,9 @@ class Streambuf(Charbuf):
         stream = self.current
 
         char = stream['iowrapper'].read(1)
-        char_tuple = self.CHAR_TUPLE(char, stream['line'], stream['col'], stream['name'])
+        #char_tuple = self.CHAR_TUPLE(char, stream['line'], stream['col'], stream['name'])
+
+        stream['col'] += 1
 
         if not char:
             self._eol_reached()
