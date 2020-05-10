@@ -39,6 +39,8 @@ class Buf(abc.ABC):
         return self._peek_raw(*args, **kwargs)
 
     def advance(self, length=1):
+        self._fill_buf(length)
+
         del self._buf[:length]
 
     def get(self, length=1):
@@ -88,7 +90,7 @@ class Charbuf(Buf):
             seq += check
             
             if is_peek:
-                self.advance(1)
+                self.advance(length)
 
             check = getter(length)
 

@@ -1,7 +1,13 @@
 
 import os, abc, enum, collections
+from pathlib import Path
 from .preprocessor import Preprocessor
-from .exceptions import EOL, Unexpected, UnexpectedType, UnexpectedValue
+from .exceptions import (
+    EOL,
+    Unexpected,
+    UnexpectedType,
+    UnexpectedValue
+)
 from .utils import is_identifier_char
 from .buf import Charbuf, Buf, get_string
 
@@ -44,7 +50,9 @@ class Streambuf(Charbuf):
             else:
                 self.add_stream(stream)
 
-        super().__init__()
+    @property
+    def _buf(self):
+        return self.current['buf']
 
     @property
     def current(self):
@@ -52,13 +60,24 @@ class Streambuf(Charbuf):
 
     def add_stream(self, stream):
         if isinstance(stream, (str, os.PathLike)):
-            stream = open(stream)
+            path = Path(stream)
+
+            try:
+                current_path = Path(self.current['iowrapper'].name)
+            except AttributeError:
+                pass
+            else:
+                if not path.is_absolute():
+                    path = current_path.parent.joinpath(stream)
+
+            stream = open(path)
 
         self.streams.append({
             'iowrapper': stream,
             'line': 0,
             'col': 0,
-            'name': getattr(stream, 'name', DEFAULT_STREAM_NAME)
+            'name': getattr(stream, 'name', DEFAULT_STREAM_NAME),
+            'buf': []
         })
 
     def make_token(self, *args, **kwargs):
@@ -132,9 +151,6 @@ class Scanner(Buf):
         for _ in range(length - len(self._buf)):
             self._buf.append(next(self))
 
-    def __iter__(self):
-        return self
-
     def __next__(self):
         return self.next_token()
 
@@ -150,7 +166,7 @@ class Scanner(Buf):
                 expect_typ=_get_expect(expect_typ, idx),
                 expect_val=_get_expect(expect_val, idx)
             )
-            for idx in range(length)    
+            for idx in range(length)
         ]
 
     def next_token(self, include_ws=False, expect_typ=None, expect_val=None):
