@@ -115,7 +115,7 @@ class Strbuf(Charbuf):
         super().__init__()
 
     def _fill_buf(self, length=1):
-        for _ in range(length):
+        for _ in range(length - len(self._buf)):
             try:
                 self._buf.append(next(self.iterator))
             except StopIteration:

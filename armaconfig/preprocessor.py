@@ -148,18 +148,16 @@ class Preprocessor:
                     elif seperator == ')': break
                     else: raise Unexpected([',', ')'], seperator)
 
-            it = iter(self.stream)
+            buf = Strbuf(self.stream)
             chars = ''
 
-            for char in it:
+            for char in buf:
                 if char == '\n': break
                 elif char == '\\':
-                    for find_newline in it:
-                        if find_newline == '\n': break
-                        elif not find_newline.isspace():
-                            raise Exception('ok')
-                    else:
-                        raise Exception('Expected newline')
+                    until_newline = buf.find_delim('\n', True)
+
+                    if until_newline.strip():
+                        raise Unexpected('whitespace, newline', until_newline)
                 else:
                     chars += char
 
