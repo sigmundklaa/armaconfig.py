@@ -21,7 +21,7 @@ class Parser:
         seq = []
         token = token or self._scanner.next_token(include_ws=True, **kwargs)
 
-        while token.value not in delim:
+        while not token.value or token.value not in delim:
             seq.append(token)
 
             token = self._scanner.next_token(include_ws=True, **kwargs)
