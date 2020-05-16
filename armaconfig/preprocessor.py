@@ -143,6 +143,9 @@ class Preprocessor:
                     if nxt: args.append(nxt)
 
                     seperator = self.stream.get(1)
+                    
+                    while seperator.isspace():
+                        seperator = self.stream.get(1)
 
                     if seperator == ',': continue
                     elif seperator == ')': break
