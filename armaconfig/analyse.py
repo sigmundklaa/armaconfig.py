@@ -45,6 +45,8 @@ class Parser:
 
             if s.value in ',;':
                 return seq + __parse()
+            elif s.value != '}':
+                raise UnexpectedValue(',;}', s)
 
             return seq
 
