@@ -137,19 +137,24 @@ class Preprocessor:
             if self.stream.peek(1) == '(':
                 self.stream.advance(1)
 
-                while True:
-                    nxt = self.stream.find_with_cb(is_identifier_char)
+                expect_comma = False
+                for char in self.stream:
+                    if is_identifier_char(char):
+                        if expect_comma:
+                            raise Unexpected(',', char)
 
-                    if nxt: args.append(nxt)
-
-                    seperator = self.stream.get(1)
-                    
-                    while seperator.isspace():
-                        seperator = self.stream.get(1)
-
-                    if seperator == ',': continue
-                    elif seperator == ')': break
-                    else: raise Unexpected([',', ')'], seperator)
+                        args.append(char + self.stream.find_with_cb(is_identifier_char))
+                        expect_comma = True
+                    elif char.isspace():
+                        continue
+                    elif char == ',' and expect_comma:
+                        expect_comma = False
+                    elif char == ')' and expect_comma:
+                        break
+                    else:
+                        raise Unexpected([',', ')', 'space', 'identifier'], char)
+                else:
+                    raise Unexpected(',', 'eol')
 
             buf = Strbuf(self.stream)
             chars = ''
@@ -196,8 +201,6 @@ class Preprocessor:
 
     def _next(self, expect=None):
         def default(payload):
-            self._comp_expect(expect, None)
-
             return self.scanner.make_token(self.Types.UNSPECIFIED, payload)
 
         char = self.stream.get(1)
@@ -206,6 +209,20 @@ class Preprocessor:
             peek = self.stream.peek(1)
         except EOL:
             peek = None
+
+        if char in ('"', '<'):
+            if expect == self.Types.INCL_STRING:
+                if char == '<':
+                    value = self.stream.find_with_cb(lambda x: x != '>', advance=True)
+                else:
+                    value = get_string(self.stream)
+
+                return self.scanner.make_token(self.Types.INCL_STRING, value)
+            elif char == '"':
+                # We return the contents of the string, however we do no processing of the string.
+                # This is just so that the preprocessor doesn't process what is in the string.
+                # We don't use the get_string method, as that replaces "" with \", which is handled later
+                return default('"%s"' % self.stream.find_with_cb(lambda x: x != '"', advance=True))
 
         if char == '/' and (peek in ('/', '*')):
             if peek == '/':
@@ -231,16 +248,11 @@ class Preprocessor:
                 return self.scanner.make_token(self.Types.IDENTIFIER, identifier)
 
             return default(identifier)
-        elif char in ('"', '<') and expect == self.Types.INCL_STRING:
-            if char == '<':
-                value = self.stream.find_with_cb(lambda x: x != '>', advance=True)
-            else:
-                value = get_string(self.stream)
-
-            return self.scanner.make_token(self.Types.INCL_STRING, value)
         elif char.isspace() and expect is not None:
             return self._next(expect)
         else:
+            self._comp_expect(expect, None)
+
             return default(char)
 
     def process(self):
