@@ -29,26 +29,32 @@ class Parser:
         return seq, token
 
     def _parse_array(self):
-        def __parse():
-            seq = []
-            seperators = ';,}'
+        seperators = (',', ';', '}')
+
+        def __next():
             _, v = token = next(self._scanner)
 
             if v == '{':
-                seq.append(__parse())
-
-                s = next(self._scanner)
+                return __parse(), next(self._scanner)
             else:
                 coll, s = self._get_until(seperators, token)
                 
-                seq.append(''.join([x.value for x in coll]))
+                return ''.join([x.value for x in coll]), s
 
-            if s.value in ',;':
-                return seq + __parse()
-            elif s.value != '}':
-                raise UnexpectedValue(',;}', s)
+        def __parse():
+            s = None
+            output = []
 
-            return seq
+            while True:
+                seq, s = __next()
+                output.append(seq)
+
+                if s.value in seperators:
+                    if s.value == '}': break
+                else:
+                    raise UnexpectedValue(seperators, s)
+
+            return output
 
         self._scanner.next_token(expect_val='{')
         
