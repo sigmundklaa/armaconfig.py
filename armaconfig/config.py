@@ -180,7 +180,7 @@ class Config(abc.MutableMapping, dict):
         self._dict = OrderedDict()
 
     def add(self, node):
-        if node.name in self:
+        if node.name in self.iter_self():
             raise ValueError('%s already defined' % node.name)
 
         self[node.name] = node
