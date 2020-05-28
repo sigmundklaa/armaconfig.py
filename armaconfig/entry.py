@@ -195,7 +195,7 @@ class Scanner(Buf):
                 if not valid:
                     raise err(expect, token)
 
-        if not (include_ws and token.type == self.Types.UNSPECIFIED
+        if (not include_ws and token.type == self.Types.UNSPECIFIED
                 and token.value.isspace()):
 
             return self.next_token(include_ws, expect_typ, expect_val)

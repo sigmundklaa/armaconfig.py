@@ -40,7 +40,7 @@ class Define:
                         identifier += resolve_arg(
                             buf.find_with_cb(is_identifier_char))
 
-                    if not (is_joined
+                    if (not is_joined
                             and identifier in self.preprocessor.defined):
                         # Check for args tho k chief
                         def_ = self.preprocessor.defined[identifier]
