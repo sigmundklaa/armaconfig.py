@@ -65,7 +65,10 @@ class Parser:
         return collection
 
     def _parse_one(self, token=None):
-        t, val = token = token or next(self._scanner)
+        try:
+            t, val = token = token or next(self._scanner)
+        except EOL:
+            return None
 
         if t == self._scanner.Types.IDENTIFIER:
             if val == 'class':
@@ -120,7 +123,9 @@ class Parser:
 
     def parse(self):
         while True:
-            try:
-                yield self._parse_one()
-            except EOL:
-                return
+            nxt = self._parse_one()
+
+            if not nxt:
+                break
+
+            yield nxt
