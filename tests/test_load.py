@@ -19,11 +19,13 @@ expected = {
     }
 }
 
+
 def test_load():
     with open(TEST_FILE) as fp:
         data = load(fp)
 
     assert data == expected
+
 
 def test_loads():
     with open(TEST_FILE) as fp:

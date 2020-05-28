@@ -1,17 +1,18 @@
 
-# TODO: Use trees instead of lists of tokens
+import enum
+import collections
 
-import os, enum, collections
-from pathlib import Path
-
-from .entry import Scanner, Token, EOL
+from .entry import Scanner, EOL
 from .exceptions import UnexpectedType, UnexpectedValue
+
 
 class NodeType(enum.Enum):
     CLASS = 1
     PROPERTY = 2
 
+
 Node = collections.namedtuple('Node', ['type', 'args'])
+
 
 class Parser:
     def __init__(self, unit):
@@ -38,7 +39,7 @@ class Parser:
                 return __parse(), next(self._scanner)
             else:
                 coll, s = self._get_until(seperators, token)
-                
+
                 return ''.join([x.value for x in coll]), s
 
         def __parse():
@@ -50,14 +51,15 @@ class Parser:
                 output.append(seq)
 
                 if s.value in seperators:
-                    if s.value == '}': break
+                    if s.value == '}':
+                        break
                 else:
                     raise UnexpectedValue(seperators, s)
 
             return output
 
         self._scanner.next_token(expect_val='{')
-        
+
         collection = __parse()
 
         self._scanner.next_token(expect_val=';')
@@ -72,26 +74,33 @@ class Parser:
 
         if t == self._scanner.Types.IDENTIFIER:
             if val == 'class':
-                _, name = self._scanner.next_token(expect_typ=[self._scanner.Types.IDENTIFIER])
-                _, v = valuetoken = self._scanner.next_token(expect_typ=[self._scanner.Types.SYMBOL])
+                _, name = self._scanner.next_token(
+                    expect_typ=[self._scanner.Types.IDENTIFIER])
+
+                _, v = valuetoken = self._scanner.next_token(
+                    expect_typ=[self._scanner.Types.SYMBOL])
 
                 if v == ':':
                     inherits, opener = (
                         x.value
                         for x in self._scanner.sequence(
                             2,
-                            expect_typ=[self._scanner.Types.IDENTIFIER, self._scanner.Types.SYMBOL]
+                            expect_typ=[
+                                self._scanner.Types.IDENTIFIER,
+                                self._scanner.Types.SYMBOL]
                         )
                     )
                 else:
                     inherits, opener = None, v
 
-                if opener != '{': raise UnexpectedValue(expected=['{'], got=valuetoken)
+                if opener != '{':
+                    raise UnexpectedValue(expected=['{'], got=valuetoken)
 
                 def _iter():
                     token = next(self._scanner)
 
-                    while not (token.type == self._scanner.Types.SYMBOL and token.value == '}'):
+                    while not (token.type == self._scanner.Types.SYMBOL
+                               and token.value == '}'):
                         yield self._parse_one(token)
                         token = next(self._scanner)
 
@@ -100,7 +109,8 @@ class Parser:
                 return Node(NodeType.CLASS, (name, inherits, _iter()))
             else:
                 name = val
-                _, next_val = val_token = self._scanner.next_token(expect_typ=self._scanner.Types.SYMBOL)
+                _, next_val = val_token = self._scanner.next_token(
+                    expect_typ=self._scanner.Types.SYMBOL)
                 is_array = False
 
                 if next_val == '[':
@@ -113,13 +123,15 @@ class Parser:
                 if is_array:
                     property_value = self._parse_array()
                 else:
-                    property_value = ''.join([x.value for x in self._get_until(';')[0]])
+                    property_value = ''.join(
+                        [x.value for x in self._get_until(';')[0]])
 
                 return Node(NodeType.PROPERTY, (name, property_value))
         elif t == self._scanner.Types.UNSPECIFIED and val == ';':
             return self._parse_one()
         else:
-            raise UnexpectedType(expected=self._scanner.Types.IDENTIFIER, got=token)
+            raise UnexpectedType(expected=self._scanner.Types.IDENTIFIER,
+                                 got=token)
 
     def parse(self):
         while True:

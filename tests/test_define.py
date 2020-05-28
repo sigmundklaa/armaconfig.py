@@ -2,6 +2,7 @@
 import functools
 from armaconfig import loads
 
+
 def equal_loads(f):
     @functools.wraps(f)
     def wrapper(*args, **kwargs):
@@ -10,9 +11,11 @@ def equal_loads(f):
         assert loads(string) == expect
     return wrapper
 
+
 @equal_loads
 def test_simpledefine():
     return '#define X 3\nproperty = X;', {'property': 3}
+
 
 @equal_loads
 def test_multiline():
@@ -25,6 +28,7 @@ def test_multiline():
     return test, {
         'val': 3
     }
+
 
 @equal_loads
 def test_ifdef():
@@ -48,6 +52,7 @@ arr[] = {Y, X};
         'arr': [2, 1]
     }
 
+
 @equal_loads
 def test_ifndef():
     test = '''
@@ -69,6 +74,7 @@ arr[] = {Y, X};
     return test, {
         'arr': [2, 1]
     }
+
 
 @equal_loads
 def test_xmacro():

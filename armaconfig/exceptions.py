@@ -1,14 +1,16 @@
 
-from typing import Union, Sequence, Any
-
 def format_expected(e, got, got_repr):
     return 'Expected %s, got %s (%s)' % (e, got, got_repr)
 
-class EOL(IndexError): pass
+
+class EOL(IndexError):
+    pass
+
 
 class Unexpected(Exception):
     def __init__(self, expected, got):
         super().__init__(format_expected(expected, got, repr(got)))
+
 
 class UnexpectedType(TypeError, Unexpected):
     def __init__(self, expected, got):
@@ -20,6 +22,7 @@ class UnexpectedType(TypeError, Unexpected):
         message = format_expected(expected, str(got.type), repr(got))
 
         super().__init__(message)
+
 
 class UnexpectedValue(ValueError, Unexpected):
     def __init__(self, expected, got):

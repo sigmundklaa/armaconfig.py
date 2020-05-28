@@ -1,9 +1,10 @@
 
-from collections import OrderedDict, namedtuple, _OrderedDictItemsView, abc
+from collections import OrderedDict, namedtuple, abc
 from .analyse import Parser, NodeType
 from .entry import DEFAULT_STREAM_NAME
 
 ValueNode = namedtuple('ValueNode', ['name', 'value'])
+
 
 class Encoder:
     def __init__(self, indent=None):
@@ -11,7 +12,8 @@ class Encoder:
         self._indent_lvl = 0
 
     def _make_indent(self, pre=None, post=None):
-        if not self._indent: return
+        if not self._indent:
+            return
 
         if pre is not None:
             yield pre
@@ -82,6 +84,7 @@ class Encoder:
         for x in iterable:
             yield from self._encode_one(x)
 
+
 def encode(node, *args, **kwargs):
     include_self = kwargs.pop('include_self', False)
     encoder = Encoder(*args, **kwargs)
@@ -91,6 +94,7 @@ def encode(node, *args, **kwargs):
 
     return encoder.encode(node.values_raw())
 
+
 def decode(unit):
     parser = Parser(unit)
     base_config = Config(getattr(unit, 'name', DEFAULT_STREAM_NAME))
@@ -99,7 +103,8 @@ def decode(unit):
 
     def _clean_value(value):
         if isinstance(value, list):
-            return [_clean_value(x) for x in value if not isinstance(x, str) or x.strip()]
+            return [_clean_value(x) for x in value 
+                    if not isinstance(x, str) or x.strip()]
         else:
             value = value.strip()
 
@@ -108,7 +113,8 @@ def decode(unit):
             except ValueError:
                 pass
 
-            # TODO: Maybe move this to its own function, as it can be used in the preprocessor's include statement
+            # TODO: Maybe move this to its own function,
+            # as it can be used in the preprocessor's include statement
             if value and value[0] == '"' and value[-1] == '"':
                 value = value[1:len(value) - 1]
 
@@ -143,6 +149,7 @@ def decode(unit):
 
     return base_config
 
+
 class Config(abc.MutableMapping, dict):
     """
     A `Config` object acts as a proxy to an ordered dict.
@@ -173,7 +180,8 @@ class Config(abc.MutableMapping, dict):
             try:
                 self.inherits = self.parent.get_config(inherits)
             except KeyError:
-                raise ValueError('Attempted to inherit non-existing config (%s)' % inherits)
+                raise ValueError(
+                    'Attempted to inherit non-existing config (%s)' % inherits)
         else:
             self.inherits = None
 
@@ -227,7 +235,7 @@ class Config(abc.MutableMapping, dict):
     def __iter__(self):
         if self.inherits:
             yield from self.inherits
-        
+
         yield from self.iter_self()
 
     def __repr__(self):

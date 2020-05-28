@@ -1,10 +1,11 @@
 
-import os, abc, enum, collections
+import os
+import enum
+import collections
 from pathlib import Path
 from .preprocessor import Preprocessor
 from .exceptions import (
     EOL,
-    Unexpected,
     UnexpectedType,
     UnexpectedValue
 )
@@ -22,6 +23,7 @@ _Token = collections.namedtuple('Token', [
     'unit'
 ])
 
+
 class Token(_Token):
     def __iter__(self):
         return iter((self.type, self.value))
@@ -36,8 +38,10 @@ class Token(_Token):
 
         return cls(*args, **td)
 
+
 class Streambuf(Charbuf):
-    CHAR_TUPLE = collections.namedtuple('CHAR_TUPLE', ['char', 'line', 'col', 'unit'])
+    CHAR_TUPLE = collections.namedtuple('CHAR_TUPLE',
+                                        ['char', 'line', 'col', 'unit'])
 
     def __init__(self, stream=None):
         self.streams = []
@@ -93,7 +97,9 @@ class Streambuf(Charbuf):
         stream = self.current
 
         char = stream['iowrapper'].read(1)
-        #char_tuple = self.CHAR_TUPLE(char, stream['line'], stream['col'], stream['name'])
+        # char_tuple = self.CHAR_TUPLE(char,
+        #                              stream['line'], stream['col'],
+        #                              stream['name'])
 
         stream['col'] += 1
 
@@ -120,6 +126,7 @@ class Streambuf(Charbuf):
 
         self.streams.pop()
 
+
 class PreproBuf(Charbuf):
     def __init__(self, stream, **kwargs):
         self.stream = Streambuf(stream)
@@ -133,6 +140,7 @@ class PreproBuf(Charbuf):
 
     def __getattr__(self, *args, **kwargs):
         return getattr(self.stream, *args, *kwargs)
+
 
 class Scanner(Buf):
     class Types(enum.Enum):
@@ -187,7 +195,9 @@ class Scanner(Buf):
                 if not valid:
                     raise err(expect, token)
 
-        if not include_ws and token.type == self.Types.UNSPECIFIED and token.value.isspace():
+        if not (include_ws and token.type == self.Types.UNSPECIFIED
+                and token.value.isspace()):
+
             return self.next_token(include_ws, expect_typ, expect_val)
 
         _compare_expect(UnexpectedType, expect_typ, token.type)
@@ -198,10 +208,15 @@ class Scanner(Buf):
     def scan(self):
         for char in self.stream:
             if is_identifier_char(char):
-                yield self.stream.make_token(self.Types.IDENTIFIER, char + self.stream.find_with_cb(is_identifier_char))
+                yield self.stream.make_token(
+                    self.Types.IDENTIFIER,
+                    char + self.stream.find_with_cb(is_identifier_char))
+
             elif char in '=;{{}}[]:':
                 yield self.stream.make_token(self.Types.SYMBOL, char)
             elif char == '"':
-                yield self.stream.make_token(self.Types.STRING, get_string(self.stream))
+                yield self.stream.make_token(
+                    self.Types.STRING,
+                    get_string(self.stream))
             else:
                 yield self.stream.make_token(self.Types.UNSPECIFIED, char)

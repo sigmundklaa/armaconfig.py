@@ -2,6 +2,7 @@
 import abc
 from .exceptions import EOL
 
+
 def get_string(buf):
     """
     This function assumes that the first " has been found
@@ -62,6 +63,7 @@ class Buf(abc.ABC):
         except EOL:
             raise StopIteration
 
+
 class Charbuf(Buf):
     def peek(self, *args, **kwargs):
         return ''.join(super().peek(*args, **kwargs))
@@ -88,7 +90,7 @@ class Charbuf(Buf):
 
         while callback(check):
             seq += check
-            
+
             if is_peek:
                 self.advance(length)
 
@@ -107,6 +109,7 @@ class Charbuf(Buf):
             check = self.peek(offset + length)[offset:]
 
         return seq
+
 
 class Strbuf(Charbuf):
     def __init__(self, iterator):

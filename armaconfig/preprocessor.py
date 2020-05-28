@@ -1,11 +1,13 @@
 """
-The preprocessor acts as an optional layer between the main stream, and the source.
+The preprocessor acts as an optional layer between the main stream,
+and the source.
 """
 
 import enum
 from .exceptions import Unexpected, UnexpectedValue, UnexpectedType, EOL
 from .utils import is_identifier_char
 from .buf import Strbuf, get_string
+
 
 class Define:
     def __init__(self, preprocessor, name, args, chars):
@@ -24,20 +26,26 @@ class Define:
         def _process_buf(buf):
             for char in buf:
                 if is_identifier_char(char):
-                    identifier = resolve_arg(char + buf.find_with_cb(is_identifier_char))
+                    identifier = resolve_arg(
+                        char + buf.find_with_cb(is_identifier_char))
                     is_joined = False
 
                     while buf.peek(2) == '##':
                         buf.advance(2)
 
-                        if buf.peek(1) == '#': break
+                        if buf.peek(1) == '#':
+                            break
 
                         is_joined = True
-                        identifier += resolve_arg(buf.find_with_cb(is_identifier_char))
+                        identifier += resolve_arg(
+                            buf.find_with_cb(is_identifier_char))
 
-                    if not is_joined and identifier in self.preprocessor.defined:
+                    if not (is_joined
+                            and identifier in self.preprocessor.defined):
                         # Check for args tho k chief
-                        yield from self.preprocessor.defined[identifier].resolve(Strbuf(_process_buf(buf)))
+                        def_ = self.preprocessor.defined[identifier]
+
+                        yield from def_.resolve(Strbuf(_process_buf(buf)))
 
                     else:
                         yield from iter(identifier)
@@ -53,7 +61,8 @@ class Define:
         expect, got = len(self.args), len(args)
 
         if expect != got:
-            raise Exception(f'{repr(self)}: Expected {expect} macro arguments, got {got}')
+            raise Exception(
+                f'{repr(self)}: Expected {expect} macro arguments, got {got}')
 
         return _process_buf(buf)
 
@@ -88,6 +97,7 @@ class Define:
     def __repr__(self):
         return f'{type(self).__name__}: {self.name}({",".join(self.args)})'
 
+
 class Preprocessor:
     class Types(enum.Enum):
         COMMENT = 1
@@ -103,7 +113,8 @@ class Preprocessor:
         self.defined = {}
         self.data = []
 
-        # Used for ifdefs, should_return is set to false when in false ifdef statement
+        # Used for ifdefs
+        # should_return is set to false when in false ifdef statement
         self._in_ifdef = False
         self.should_return = True
 
@@ -143,7 +154,9 @@ class Preprocessor:
                         if expect_comma:
                             raise Unexpected(',', char)
 
-                        args.append(char + self.stream.find_with_cb(is_identifier_char))
+                        args.append(
+                            char + self.stream.find_with_cb(is_identifier_char)
+                            )
                         expect_comma = True
                     elif char.isspace():
                         continue
@@ -152,7 +165,8 @@ class Preprocessor:
                     elif char == ')' and expect_comma:
                         break
                     else:
-                        raise Unexpected([',', ')', 'space', 'identifier'], char)
+                        raise Unexpected(
+                            [',', ')', 'space', 'identifier'], char)
                 else:
                     raise Unexpected(',', 'eol')
 
@@ -160,7 +174,8 @@ class Preprocessor:
             chars = ''
 
             for char in buf:
-                if char == '\n': break
+                if char == '\n':
+                    break
                 elif char == '\\':
                     until_newline = buf.find_delim('\n', True)
 
@@ -188,7 +203,9 @@ class Preprocessor:
             _, macro = self._next(self.Types.IDENTIFIER)
             is_defined = macro in self.defined
 
-            self.should_return = is_defined if command == 'ifdef' else not is_defined
+            self.should_return = is_defined if command == 'ifdef' else (
+                not is_defined)
+
             self._in_ifdef = True
         elif command == 'undef':
             # remove from .defined, return empty
@@ -197,7 +214,8 @@ class Preprocessor:
             if macro in self.defined:
                 del self.defined[macro]
         else:
-            raise UnexpectedValue(['define', 'include', 'ifdef', 'ifndef', 'undef'], token)
+            raise UnexpectedValue(
+                ['define', 'include', 'ifdef', 'ifndef', 'undef'], token)
 
     def _next(self, expect=None):
         def default(payload):
@@ -213,16 +231,21 @@ class Preprocessor:
         if char in ('"', '<'):
             if expect == self.Types.INCL_STRING:
                 if char == '<':
-                    value = self.stream.find_with_cb(lambda x: x != '>', advance=True)
+                    value = self.stream.find_with_cb(
+                        lambda x: x != '>', advance=True)
                 else:
                     value = get_string(self.stream)
 
                 return self.scanner.make_token(self.Types.INCL_STRING, value)
             elif char == '"':
-                # We return the contents of the string, however we do no processing of the string.
-                # This is just so that the preprocessor doesn't process what is in the string.
-                # We don't use the get_string method, as that replaces "" with \", which is handled later
-                return default('"%s"' % self.stream.find_with_cb(lambda x: x != '"', advance=True))
+                # We return the contents of the string,
+                # however we do no processing of the string.
+                # This is just so that the preprocessor doesn't
+                # process what is in the string.
+                # We don't use the get_string method,
+                # as that replaces "" with \", which is handled later
+                return default('"%s"' % self.stream.find_with_cb(
+                    lambda x: x != '"', advance=True))
 
         if char == '/' and (peek in ('/', '*')):
             if peek == '/':
@@ -231,10 +254,11 @@ class Preprocessor:
                 value = self.stream.find_delim('*/', advance=True)
 
             return self.scanner.make_token(self.Types.COMMENT, value)
-        elif char == '#':# and self.stream.line_empty:
+        elif char == '#':
             self._comp_expect(expect, self.Types.COMMAND)
 
-            # if the character is #, and everything before the current character is a whitespace
+            # if the character is #,
+            # and everything before the current character is a whitespace
             return self.scanner.make_token(self.Types.COMMAND, None)
         elif char == '_' or char.isalpha():
             self._comp_expect(expect, self.Types.IDENTIFIER)
@@ -242,10 +266,12 @@ class Preprocessor:
             # get the identifier, check if it is a macro.
             # if it is a macro, return a token for it,
             # if not, return the default
-            identifier = char + self.stream.find_with_cb(is_identifier_char, advance=False)
+            identifier = char + self.stream.find_with_cb(
+                is_identifier_char, advance=False)
 
             if identifier in self.defined or expect == self.Types.IDENTIFIER:
-                return self.scanner.make_token(self.Types.IDENTIFIER, identifier)
+                return self.scanner.make_token(
+                    self.Types.IDENTIFIER, identifier)
 
             return default(identifier)
         elif char.isspace() and expect is not None:
@@ -266,9 +292,10 @@ class Preprocessor:
             if t == self.Types.COMMENT:
                 if self.opts.get('include_commments', False):
                     self.data.append(nxt)
-                    
-                    # Return a space instead of an empty string, this is so that
-                    # the stream does not raise EOL from this sequence
+
+                    # Return a space instead of an empty string,
+                    # this is so that the stream does not raise EOL
+                    # from this sequence
                     return ' '
 
                 # Skip the comment, move to the next one
@@ -277,10 +304,17 @@ class Preprocessor:
                 return v
             elif t == self.Types.IDENTIFIER:
                 if v in self.defined:
-                    return ''.join([x for x in self.defined[v].resolve(self.stream)])
+                    return ''.join([x for x in self.defined[v].resolve(
+                        self.stream)])
                 else:
                     return v
 
-            raise UnexpectedType([self.Types.COMMAND, self.Types.COMMENT, self.Types.UNSPECIFIED], nxt)
+            raise UnexpectedType(
+                [
+                    self.Types.COMMAND,
+                    self.Types.COMMENT,
+                    self.Types.UNSPECIFIED
+                ],
+                nxt)
         else:
             return ''

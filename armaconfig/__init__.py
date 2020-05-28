@@ -1,16 +1,18 @@
 
 import io
 
-from .config import *
-from .analyse import *
-from .exceptions import *
-from .entry import *
+from .config import (
+    encode,
+    decode
+)
+
 
 def dump(obj, fp, *args, **kwargs):
     for x in encode(obj, *args, **kwargs):
         fp.write(x)
 
     return fp
+
 
 def dumps(obj, *args, **kwargs):
     fp = dump(obj, io.StringIO(), *args, **kwargs)
@@ -19,8 +21,10 @@ def dumps(obj, *args, **kwargs):
 
     return read
 
+
 def load(fp, *args, **kwargs):
     return decode(fp, *args, **kwargs)
+
 
 def loads(string, *args, **kwargs):
     return load(io.StringIO(string), *args, **kwargs)
