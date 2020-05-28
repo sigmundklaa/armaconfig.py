@@ -103,7 +103,7 @@ def decode(unit):
 
     def _clean_value(value):
         if isinstance(value, list):
-            return [_clean_value(x) for x in value 
+            return [_clean_value(x) for x in value
                     if not isinstance(x, str) or x.strip()]
         else:
             value = value.strip()

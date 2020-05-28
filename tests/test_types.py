@@ -1,6 +1,7 @@
 
 import pytest
-from armaconfig import loads, Unexpected
+from armaconfig import loads
+from armaconfig.exceptions import Unexpected
 
 
 def test_array_oned():
