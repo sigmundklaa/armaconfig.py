@@ -1,3 +1,5 @@
 bandit
 pylint
 flake8
+pytest
+tox
