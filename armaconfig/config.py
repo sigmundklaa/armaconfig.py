@@ -2,6 +2,7 @@
 from collections import OrderedDict, namedtuple, abc
 from .analyse import Parser, NodeType
 from .entry import DEFAULT_STREAM_NAME
+from .utils import tag_last
 
 ValueNode = namedtuple('ValueNode', ['name', 'value'])
 
@@ -30,18 +31,14 @@ class Encoder:
             if node.inherits:
                 yield ' : ' + node.inherits.name
 
-            yield ' {'
-
             self._indent_lvl += 1
 
-            for x in node.values_raw():
-                yield from self._make_indent(pre='\n')
-                yield from self._encode_one(x)
+            yield from self._make_indent(pre=' {\n')
+            yield from self.encode(node.values_raw())
 
             self._indent_lvl -= 1
 
-            yield from self._make_indent('\n')
-            yield '};'
+            yield from self._make_indent(pre='\n', post='};')
         elif isinstance(node, ValueNode):
             yield node.name
 
@@ -81,13 +78,24 @@ class Encoder:
             yield str(node)
 
     def encode(self, iterable):
-        for x in iterable:
+        for is_last, x in tag_last(iterable):
             yield from self._encode_one(x)
+
+            if not is_last:
+                yield from self._make_indent(pre='\n')
 
 
 def encode(node, *args, **kwargs):
     include_self = kwargs.pop('include_self', False)
     encoder = Encoder(*args, **kwargs)
+
+    if not isinstance(node, Config):
+        if isinstance(node, dict):
+            node = Config.from_dict('CHANGENAMEPLS', node)
+            include_self = False
+        elif not include_self:
+            raise TypeError(
+                'expected dict, config, got %s' % (str(type(node))))
 
     if include_self:
         return encoder._encode_one(node)
@@ -172,6 +180,20 @@ class Config(abc.MutableMapping, dict):
         }
     }
     """
+    @classmethod
+    def from_dict(self, name, dict_, **kwargs):
+        conf = Config(name, **kwargs)
+
+        for k, v in dict_.items():
+            if isinstance(v, dict) and not isinstance(v, Config):
+                node = Config.from_dict(k, v, parent=conf)
+            else:
+                node = ValueNode(k, v)
+
+            conf.add(node)
+
+        return conf
+
     def __init__(self, name, inherits=None, parent=None):
         self.name = name
         self.parent = parent
