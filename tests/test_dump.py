@@ -1,5 +1,5 @@
 
-from armaconfig import dump, dumps
+from armaconfig import dumps
 
 TEST_FILE = 'files/test_config.hpp'
 
