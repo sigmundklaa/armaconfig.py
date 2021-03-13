@@ -33,12 +33,14 @@ class Encoder:
 
             self._indent_lvl += 1
 
-            yield from self._make_indent(pre=' {\n')
+            yield ' {'
+            yield from self._make_indent(pre='\n')
             yield from self.encode(node.values_raw())
 
             self._indent_lvl -= 1
 
-            yield from self._make_indent(pre='\n', post='};')
+            yield from self._make_indent(pre='\n')
+            yield '};'
         elif isinstance(node, ValueNode):
             yield node.name
 

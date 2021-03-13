@@ -7,7 +7,8 @@ def is_identifier_char(char, first_strict=False):
     return char.isalnum() or char == '_'
 
 
-# i stole this from https://stackoverflow.com/questions/22994656/how-to-check-if-an-item-is-the-last-one-of-iteration
+# i stole this from
+# https://stackoverflow.com/questions/22994656/how-to-check-if-an-item-is-the-last-one-of-iteration
 def tag_last(iterable):
     """
     Given some iterable, returns (last, item), where last is only
