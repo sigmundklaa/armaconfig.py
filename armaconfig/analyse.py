@@ -15,8 +15,8 @@ Node = collections.namedtuple('Node', ['type', 'args'])
 
 
 class Parser:
-    def __init__(self, unit):
-        self._scanner = Scanner(unit)
+    def __init__(self, unit, *args, **kwargs):
+        self._scanner = Scanner(unit, *args, **kwargs)
 
     def _get_until(self, delim=';', token=None, **kwargs):
         seq = []

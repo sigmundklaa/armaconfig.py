@@ -93,7 +93,7 @@ def encode(node, *args, **kwargs):
 
     if not isinstance(node, Config):
         if isinstance(node, dict):
-            node = Config.from_dict('CHANGENAMEPLS', node)
+            node = Config.from_dict(DEFAULT_STREAM_NAME, node)
             include_self = False
         elif not include_self:
             raise TypeError(
@@ -105,8 +105,8 @@ def encode(node, *args, **kwargs):
     return encoder.encode(node.values_raw())
 
 
-def decode(unit):
-    parser = Parser(unit)
+def decode(unit, *args, **kwargs):
+    parser = Parser(unit, *args, **kwargs)
     base_config = Config(getattr(unit, 'name', DEFAULT_STREAM_NAME))
 
     configs = [base_config]
