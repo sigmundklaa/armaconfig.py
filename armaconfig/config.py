@@ -217,6 +217,9 @@ class Config(abc.MutableMapping, dict):
 
         self[node.name] = node
 
+    def pop(self, key):
+        return self._dict.pop(self._keytransform(key))
+
     def get_config(self, k):
         try:
             config = self[k]
