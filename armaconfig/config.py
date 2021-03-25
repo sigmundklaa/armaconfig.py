@@ -190,7 +190,7 @@ class Config(abc.MutableMapping, dict):
                 node = Config.from_dict(k, v, parent=conf)
             elif isinstance(v, (Config, ValueNode)):
                 node = v
-            elif isinstance(v, (int, float, complex, list)):
+            elif isinstance(v, (str, int, float, complex, list)):
                 node = ValueNode(k, v)
             else:
                 raise TypeError(str(type(v)))
