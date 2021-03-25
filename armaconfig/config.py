@@ -86,6 +86,7 @@ class Encoder:
             if not is_last:
                 yield from self._make_indent(pre='\n')
 
+
 def encode(node, *args, **kwargs):
     include_self = kwargs.pop('include_self', False)
     encoder = Encoder(*args, **kwargs)
@@ -198,6 +199,19 @@ class Config(abc.MutableMapping, dict):
             conf.add(node)
 
         return conf
+
+    def to_dict(self):
+        out = {}
+
+        for k in self:
+            item = self[k]
+
+            if isinstance(item, Config):
+                out[k] = item.to_dict()
+            else:
+                out[k] = item
+
+        return out
 
     def __init__(self, name, inherits=None, parent=None):
         self.name = name
