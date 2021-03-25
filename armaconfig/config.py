@@ -218,11 +218,7 @@ class Config(abc.MutableMapping, dict):
         self.parent = parent
 
         if inherits:
-            try:
-                self.inherits = self.parent.get_config(inherits)
-            except KeyError:
-                raise ValueError(
-                    'Attempted to inherit non-existing config (%s)' % inherits)
+            self.add_inherits(inherits)
         else:
             self.inherits = None
 
@@ -236,6 +232,13 @@ class Config(abc.MutableMapping, dict):
 
     def pop(self, key):
         return self._dict.pop(self._keytransform(key))
+
+    def add_inherits(self, inherits):
+        try:
+            self.inherits = self.parent.get_config(inherits)
+        except KeyError:
+            raise ValueError(
+                'Attempted to inherit non-existing config (%s)' % inherits)
 
     def get_config(self, k):
         try:
