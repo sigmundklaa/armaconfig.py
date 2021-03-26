@@ -234,7 +234,7 @@ class Config(abc.MutableMapping, dict):
             else:
                 raise TypeError(str(type(node)))
 
-        self[node.name] = node
+        self[name] = node
 
     def pop(self, key):
         return self._dict.pop(self._keytransform(key))
