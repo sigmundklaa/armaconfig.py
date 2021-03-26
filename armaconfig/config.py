@@ -191,6 +191,17 @@ class Config(abc.MutableMapping, dict):
 
         return conf
 
+    def __init__(self, name, inherits=None, parent=None):
+        self.name = name
+        self.parent = parent
+
+        if inherits:
+            self.add_inherits(inherits)
+        else:
+            self.inherits = None
+
+        self._dict = OrderedDict()
+
     def to_dict(self):
         out = {}
 
@@ -204,22 +215,8 @@ class Config(abc.MutableMapping, dict):
 
         return out
 
-    def __init__(self, name, inherits=None, parent=None):
-        self.name = name
-        self.parent = parent
-
-        if inherits:
-            self.add_inherits(inherits)
-        else:
-            self.inherits = None
-
-        self._dict = OrderedDict()
-
     def add(self, node, name=None):
         if isinstance(node, (Config, ValueNode)):
-            if node.name in self.iter_self():
-                raise ValueError('%s already defined' % node.name)
-
             name = node.name
         else:
             if name is None:
@@ -234,6 +231,9 @@ class Config(abc.MutableMapping, dict):
             else:
                 raise TypeError(str(type(node)))
 
+        if name in self.iter_self():
+            raise ValueError('%s already defined' % name)
+
         self[name] = node
 
     def pop(self, key):
@@ -247,18 +247,16 @@ class Config(abc.MutableMapping, dict):
                 'Attempted to inherit non-existing config (%s)' % inherits)
 
     def get_config(self, k):
-        try:
-            config = self[k]
+        k = self._keytransform(k)
+        config = self._dict.get(k, None)
 
-            if not isinstance(config, Config):
-                raise TypeError()
-
+        if isinstance(config, Config):
             return config
-        except KeyError:
-            if self.parent:
-                return self.parent.get_config(k)
 
-            raise
+        elif self.parent is not None:
+            return self.parent.get_config(k)
+
+        raise KeyError()
 
     def iter_self(self):
         return iter(self._dict)
