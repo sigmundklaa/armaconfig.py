@@ -187,16 +187,7 @@ class Config(abc.MutableMapping, dict):
         conf = Config(name, **kwargs)
 
         for k, v in dict_.items():
-            if isinstance(v, dict) and not isinstance(v, Config):
-                node = Config.from_dict(k, v, parent=conf)
-            elif isinstance(v, (Config, ValueNode)):
-                node = v
-            elif isinstance(v, (str, int, float, complex, list)):
-                node = ValueNode(k, v)
-            else:
-                raise TypeError(str(type(v)))
-
-            conf.add(node)
+            conf.add(v, k)
 
         return conf
 
@@ -224,9 +215,24 @@ class Config(abc.MutableMapping, dict):
 
         self._dict = OrderedDict()
 
-    def add(self, node):
-        if node.name in self.iter_self():
-            raise ValueError('%s already defined' % node.name)
+    def add(self, node, name=None):
+        if isinstance(node, (Config, ValueNode)):
+            if node.name in self.iter_self():
+                raise ValueError('%s already defined' % node.name)
+
+            name = node.name
+        else:
+            if name is None:
+                raise Exception('name cant be none')
+
+            if isinstance(node, dict):
+                node = Config.from_dict(name, node, parent=self)
+            elif isinstance(node, (Config, ValueNode)):
+                node = node
+            elif isinstance(node, (str, int, float, complex, list)):
+                node = ValueNode(name, node)
+            else:
+                raise TypeError(str(type(node)))
 
         self[node.name] = node
 
