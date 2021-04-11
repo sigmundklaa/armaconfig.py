@@ -106,10 +106,10 @@ class Preprocessor:
         INCL_STRING = 4
         UNSPECIFIED = 5
 
-    def __init__(self, scanner, **opts):
+    def __init__(self, buf, **opts):
         self.opts = opts
-        self.scanner = scanner
-        self.stream = self.scanner.stream
+        self.buf = buf
+        self.stream = self.buf.stream
         self.defined = {}
         self.data = []
 
@@ -219,7 +219,7 @@ class Preprocessor:
 
     def _next(self, expect=None):
         def default(payload):
-            return self.scanner.make_token(self.Types.UNSPECIFIED, payload)
+            return self.buf.make_token(self.Types.UNSPECIFIED, payload)
 
         char = self.stream.get(1)
 
@@ -236,7 +236,7 @@ class Preprocessor:
                 else:
                     value = get_string(self.stream)
 
-                return self.scanner.make_token(self.Types.INCL_STRING, value)
+                return self.buf.make_token(self.Types.INCL_STRING, value)
             elif char == '"':
                 # We return the contents of the string,
                 # however we do no processing of the string.
@@ -253,13 +253,13 @@ class Preprocessor:
             else:
                 value = self.stream.find_delim('*/', advance=True)
 
-            return self.scanner.make_token(self.Types.COMMENT, value)
+            return self.buf.make_token(self.Types.COMMENT, value)
         elif char == '#':
             self._comp_expect(expect, self.Types.COMMAND)
 
             # if the character is #,
             # and everything before the current character is a whitespace
-            return self.scanner.make_token(self.Types.COMMAND, None)
+            return self.buf.make_token(self.Types.COMMAND, None)
         elif char == '_' or char.isalpha():
             self._comp_expect(expect, self.Types.IDENTIFIER)
 
@@ -270,7 +270,7 @@ class Preprocessor:
                 is_identifier_char, advance=False)
 
             if identifier in self.defined or expect == self.Types.IDENTIFIER:
-                return self.scanner.make_token(
+                return self.buf.make_token(
                     self.Types.IDENTIFIER, identifier)
 
             return default(identifier)
