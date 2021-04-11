@@ -6,6 +6,8 @@ from .config import (
     decode
 )
 
+from .entry import PreproBuf
+
 
 def dump(obj, fp, *args, **kwargs):
     for x in encode(obj, *args, **kwargs):
@@ -28,3 +30,11 @@ def load(fp, *args, **kwargs):
 
 def loads(string, *args, **kwargs):
     return load(io.StringIO(string), *args, **kwargs)
+
+
+def preprocess(stream, **kwargs):
+    return PreproBuf(stream, **kwargs)
+
+
+def preprocess_s(string, **kwargs):
+    return PreproBuf(io.StringIO(string), **kwargs)
