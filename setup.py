@@ -5,7 +5,7 @@ with open('README.md') as fp:
     readme = fp.read()
 
 setup(
-    name='armaconfig.py',
+    name='armaconfig',
     description='Parser for Arma 3 config files (.ext, .hpp, .cpp)',
     long_description=readme,
     author='Sigmund "Sig" Klåpbakken',
